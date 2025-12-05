@@ -1,0 +1,106 @@
+# -*- coding: utf-8 -*-
+"""
+Lucas Debner da Silva
+Disciplina: Fundamentos/Introdução a IA
+
+Objetivo: Sistema de regras e de lógica Fuzzy para avaliação de livros de literatura
+"""
+!pip install scikit-fuzzy
+
+import numpy as np
+import skfuzzy as fuzz
+from skfuzzy import control as ctrl
+import matplotlib.pyplot as plt
+
+# =============================
+# CRIANDO AS VARIÁVEIS DE ENTRADA
+# =============================
+
+# Coerência (0 a 10)
+coerencia = ctrl.Antecedent(np.arange(0, 10.1, 0.1), 'coerencia')
+# Clareza (0 a 10)
+clareza = ctrl.Antecedent(np.arange(0, 10.1, 0.1), 'clareza')
+# Enredo (0 a 10)
+enredo = ctrl.Antecedent(np.arange(0, 10.1, 0.1), 'enredo')
+
+# Saída: Avaliação do livro (0 a 10)
+avaliacao = ctrl.Consequent(np.arange(0, 10.1, 0.1), 'avaliacao')
+
+# =============================
+# DEFINIÇÃO DAS FUNÇÕES DE PERTINÊNCIA
+# =============================
+
+# Coerência
+coerencia['baixa'] = fuzz.trimf(coerencia.universe, [0, 0, 4.5])
+coerencia['media'] = fuzz.trimf(coerencia.universe, [4, 6.25, 7.9])
+coerencia['alta'] = fuzz.trimf(coerencia.universe, [7, 10, 10])
+
+# Clareza
+clareza['baixa'] = fuzz.trimf(clareza.universe, [0, 0, 3.5])
+clareza['media'] = fuzz.trimf(clareza.universe, [2, 4.5, 8.9])
+clareza['alta'] = fuzz.trimf(clareza.universe, [7, 10, 10])
+
+# Enredo
+enredo['fraco'] = fuzz.trimf(enredo.universe, [0, 0, 6])
+enredo['moderado'] = fuzz.trimf(enredo.universe, [4.5, 7.5, 8.9])
+enredo['forte'] = fuzz.trimf(enredo.universe, [7.5, 10, 10])
+
+# Avaliação do livro
+avaliacao['ruim'] = fuzz.trimf(avaliacao.universe, [0, 0, 4])
+avaliacao['regular'] = fuzz.trimf(avaliacao.universe, [3, 5, 7])
+avaliacao['bom'] = fuzz.trimf(avaliacao.universe, [6, 7.5, 9])
+avaliacao['excelente'] = fuzz.trimf(avaliacao.universe, [8, 10, 10])
+
+# =============================
+# VISUALIZAÇÃO DAS FUNÇÕES DE PERTINÊNCIA
+# =============================
+coerencia.view()
+clareza.view()
+enredo.view()
+avaliacao.view()
+
+# =============================
+# DEFINIÇÃO DAS REGRAS FUZZY
+# =============================
+
+# Exemplos de regras (pode expandir conforme desejar)
+regra1 = ctrl.Rule(coerencia['baixa'] | clareza['baixa'] | enredo['fraco'], avaliacao['ruim'])
+regra2 = ctrl.Rule(coerencia['media'] & clareza['media'] & enredo['moderado'], avaliacao['regular'])
+regra3 = ctrl.Rule(coerencia['alta'] & clareza['alta'] & enredo['forte'], avaliacao['excelente'])
+regra4 = ctrl.Rule(coerencia['media'] & clareza['alta'] & enredo['moderado'], avaliacao['bom'])
+regra5 = ctrl.Rule(coerencia['alta'] & clareza['media'] & enredo['moderado'], avaliacao['bom'])
+regra6 = ctrl.Rule(coerencia['media'] & clareza['media'] & enredo['forte'], avaliacao['bom'])
+regra7 = ctrl.Rule(coerencia['alta'] & clareza['media'] & enredo['forte'], avaliacao['excelente']) #cobrir casos de livros antigos (clareza média)
+
+# =============================
+# CRIANDO O SISTEMA DE CONTROLE FUZZY
+# =============================
+avaliacao_ctrl = ctrl.ControlSystem([regra1, regra2, regra3, regra4, regra5, regra6, regra7])
+engine = ctrl.ControlSystemSimulation(avaliacao_ctrl)
+
+# =============================
+# ENTRADA DOS VALORES PELO USUÁRIO
+# =============================
+print("Informe a nota de cada critério de 0 a 10:")
+
+nota_coerencia = float(input("Coerência: "))
+nota_clareza = float(input("Clareza: "))
+nota_enredo = float(input("Enredo: "))
+
+engine.input['coerencia'] = nota_coerencia
+engine.input['clareza'] = nota_clareza
+engine.input['enredo'] = nota_enredo
+
+# =============================
+# CALCULA A SAÍDA DO SISTEMA
+# =============================
+engine.compute()
+
+# =============================
+# EXIBE O RESULTADO
+# =============================
+print(f'\nAvaliação final do livro: {engine.output["avaliacao"]:.2f}/10')
+
+# Exibe gráfico da saída
+avaliacao.view(sim=engine)
+plt.show()
