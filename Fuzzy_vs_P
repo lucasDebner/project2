@@ -1,0 +1,113 @@
+# -*- coding: utf-8 -*-
+"""
+Lucas Debner da Silva
+Disciplina: Fundamentos/Introdução a IA
+
+Objetivo: Comparativo entre Controle Fuzzy e Controle Proporcional (P) para avaliação de livros
+"""
+
+!pip install scikit-fuzzy
+
+import numpy as np
+import skfuzzy as fuzz
+from skfuzzy import control as ctrl
+import matplotlib.pyplot as plt
+
+# =============================
+# CRIANDO AS VARIÁVEIS DE ENTRADA PARA FUZZY
+# =============================
+coerencia_f = ctrl.Antecedent(np.arange(0, 10.1, 0.1), 'coerencia')
+clareza_f = ctrl.Antecedent(np.arange(0, 10.1, 0.1), 'clareza')
+enredo_f = ctrl.Antecedent(np.arange(0, 10.1, 0.1), 'enredo')
+
+# Saída: Avaliação do livro
+avaliacao_f = ctrl.Consequent(np.arange(0, 10.1, 0.1), 'avaliacao')
+
+# =============================
+# FUNÇÕES DE PERTINÊNCIA FUZZY
+# =============================
+coerencia_f['baixa'] = fuzz.trimf(coerencia_f.universe, [0, 0, 4.5])
+coerencia_f['media'] = fuzz.trimf(coerencia_f.universe, [4, 6.25, 7.9])
+coerencia_f['alta'] = fuzz.trimf(coerencia_f.universe, [7, 10, 10])
+
+clareza_f['baixa'] = fuzz.trimf(clareza_f.universe, [0, 0, 3.5])
+clareza_f['media'] = fuzz.trimf(clareza_f.universe, [2, 4.5, 8.9])
+clareza_f['alta'] = fuzz.trimf(clareza_f.universe, [7, 10, 10])
+
+enredo_f['fraco'] = fuzz.trimf(enredo_f.universe, [0, 0, 6])
+enredo_f['moderado'] = fuzz.trimf(enredo_f.universe, [4.5, 7.5, 8.9])
+enredo_f['forte'] = fuzz.trimf(enredo_f.universe, [7.5, 10, 10])
+
+avaliacao_f['ruim'] = fuzz.trimf(avaliacao_f.universe, [0, 0, 4])
+avaliacao_f['regular'] = fuzz.trimf(avaliacao_f.universe, [3, 5, 7])
+avaliacao_f['bom'] = fuzz.trimf(avaliacao_f.universe, [6, 7.5, 9])
+avaliacao_f['excelente'] = fuzz.trimf(avaliacao_f.universe, [8, 10, 10])
+
+# =============================
+# VISUALIZAÇÃO DAS FUNÇÕES DE PERTINÊNCIA
+# =============================
+coerencia_f.view()
+clareza_f.view()
+enredo_f.view()
+avaliacao_f.view()
+
+# =============================
+# REGRAS FUZZY
+# =============================
+regra1 = ctrl.Rule(coerencia_f['baixa'] | clareza_f['baixa'] | enredo_f['fraco'], avaliacao_f['ruim'])
+regra2 = ctrl.Rule(coerencia_f['media'] & clareza_f['media'] & enredo_f['moderado'], avaliacao_f['regular'])
+regra3 = ctrl.Rule(coerencia_f['alta'] & clareza_f['alta'] & enredo_f['forte'], avaliacao_f['excelente'])
+regra4 = ctrl.Rule(coerencia_f['media'] & clareza_f['alta'] & enredo_f['moderado'], avaliacao_f['bom'])
+regra5 = ctrl.Rule(coerencia_f['alta'] & clareza_f['media'] & enredo_f['moderado'], avaliacao_f['bom'])
+regra6 = ctrl.Rule(coerencia_f['media'] & clareza_f['media'] & enredo_f['forte'], avaliacao_f['bom'])
+regra7 = ctrl.Rule(coerencia_f['alta'] & clareza_f['media'] & enredo_f['forte'], avaliacao_f['excelente'])
+
+avaliacao_ctrl = ctrl.ControlSystem([regra1, regra2, regra3, regra4, regra5, regra6, regra7])
+engine_f = ctrl.ControlSystemSimulation(avaliacao_ctrl)
+
+# =============================
+# ENTRADA DO USUÁRIO
+# =============================
+print("Informe a nota de cada critério de 0 a 10:")
+nota_coerencia = float(input("Coerência: "))
+nota_clareza = float(input("Clareza: "))
+nota_enredo = float(input("Enredo: "))
+
+# =============================
+# AVALIAÇÃO FUZZY
+# =============================
+engine_f.input['coerencia'] = nota_coerencia
+engine_f.input['clareza'] = nota_clareza
+engine_f.input['enredo'] = nota_enredo
+engine_f.compute()
+resultado_fuzzy = engine_f.output[avaliacao_f.label]
+
+print(f'\nAvaliação final do livro (Fuzzy): {resultado_fuzzy:.2f}/10')
+
+# Exibe gráfico da saída fuzzy
+avaliacao_f.view(sim=engine_f)
+plt.show()
+
+# =============================
+# AVALIAÇÃO PROPORCIONAL (P)
+# =============================
+Kc = 0.30   # peso coerência
+Kcl = 0.25  # peso clareza
+Ke = 0.45   # peso enredo
+
+resultado_proporcional = Kc*nota_coerencia + Kcl*nota_clareza + Ke*nota_enredo
+resultado_proporcional = max(0, min(10, resultado_proporcional))  # limitar 0-10
+
+print(f'Avaliação final do livro (Proporcional P): {resultado_proporcional:.2f}/10')
+
+# =============================
+# GRÁFICO COMPARATIVO
+# =============================
+labels = ['Fuzzy', 'Proporcional']
+valores = [resultado_fuzzy, resultado_proporcional]
+
+plt.bar(labels, valores, color=['skyblue', 'salmon'])
+plt.ylim(0, 10)
+plt.ylabel("Nota do Livro")
+plt.title("Comparativo de Avaliação: Fuzzy vs Proporcional")
+plt.show()
